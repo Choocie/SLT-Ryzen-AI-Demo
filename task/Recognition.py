@@ -21,6 +21,52 @@ def generateGlossDatabase(path):
         data = file.read().replace('\n', '').replace('\'', '')    
         glossList = data.split(',')
         return dict(zip(range(len(glossList)), glossList))
+    
+def ctc_beam_search_decoder(logits, sequence_lengths, beam_width=10, blank=0):
+    """
+    Perform CTC beam search decoding.
+
+    Args:
+        logits: A tensor of shape [batch_size, max_time, num_classes] containing the output logits.
+        sequence_lengths: A tensor of shape [batch_size] containing the sequence lengths.
+        beam_width: The width of the beam search.
+        blank: The index of the blank label.
+
+    Returns:
+        A list of decoded sequences (one per batch).
+    """
+    batch_size, max_time, num_classes = logits.shape
+    log_probs = np.log(np.exp(logits)/np.sum(np.exp(logits),axis=2,keepdims=True))
+
+    
+    results = []
+    for b in range(batch_size):
+        beams = [([], 0)]  # Initialize with an empty path and zero log-probability
+        
+        for t in range(sequence_lengths[b]):
+            new_beams = []
+            for prefix, score in beams:
+                for c in range(num_classes):
+                    new_prefix = prefix + [c]
+                    new_score = score + log_probs[b, t, c].item()
+                    new_beams.append((new_prefix, new_score))
+            
+            # Sort by score and keep the top beam_width beams
+            new_beams = sorted(new_beams, key=lambda x: x[1], reverse=True)[:beam_width]
+            beams = new_beams
+        
+        # Choose the best path (excluding the blank label)
+        best_path = beams[0][0]
+        decoded = []
+        prev_char = None
+        for char in best_path:
+            if char != blank and char != prev_char:
+                decoded.append(char)
+            prev_char = char
+        results.append(decoded)
+    
+    return results
+
 
 def recognizeGloss(config):
     
@@ -65,28 +111,23 @@ def recognizeGloss(config):
             'sgn_videos': video,
             'onnx::Mul_8': np.zeros((1),dtype=np.float32)})
         
-        ids = np.argmax(outputs[0][:,:,:],axis=2).flatten()
-        filtered_ids = [i for i in ids if i > 3]
-        gloss = [glosses[i] for i in filtered_ids]
+        decoded_sequences = ctc_beam_search_decoder(outputs[0], np.array([10,]), beam_width=5, blank=0)
         
-        if(config['use_view'] and len(gloss) > 0):
-            print(','.join(gloss))
-            gloss_sock.send(','.join(gloss).encode('ascii'))
-        
-        #Small test
-        #video = np.transpose(video, axes=[0, 2, 3, 1]) # (T,C,H,W) -> (T, H, W, C)   
-        #for i in range(40):
-        #    cv2.imwrite(f"test_{i:d}.png",video[i,:,:,:])
-        #image = cv2.putText(video[0,:,:,:].copy(), ' '.join(gloss), (30,config['crop_height'] - 30), cv2.FONT_HERSHEY_SIMPLEX , 0.5, (0,0,255), 1, cv2.LINE_AA) 
-        #cv2.imshow("Receiver stream", image)
+        #ids = np.argmax(outputs[0][:,:,:],axis=2).flatten()
+        #filtered_ids = [i for i in ids if i > 3]
+        #gloss = [glosses[i] for i in filtered_ids]
+        gloss = [glosses[i] for i in decoded_sequences[0]]
+        print(','.join(gloss))
 
+        if(config['use_view'] and len(gloss) > 0):
+            gloss_sock.send(','.join(gloss).encode('ascii'))
+     
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     rcv_sock.close()
     gloss_sock.close()
     ctx.term()
-    #cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
