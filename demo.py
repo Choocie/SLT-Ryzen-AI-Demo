@@ -6,6 +6,7 @@ from  multiprocessing import Process
 from task.Camera import publishCamera
 from task.Recognition import recognizeGloss
 from task.Video import publishVideo
+from task.Viewer import subscribeViewer
 
 
 config = {
@@ -21,10 +22,13 @@ config = {
      'video_width':          210,
      'video_height':         260,
      'video_path':           "resources/video/images",
-     'video_length':         40,
+     'video_length':         181,
      'camera_port':          '1235',
-     'verbose':              True,
-     'use_camera':           False
+     'view_port':            '1236',
+     'gloss_port':          '1237',
+     'verbose':              False,
+     'use_camera':           True,
+     'use_view':             True
     }
 
 if __name__ == "__main__":
@@ -33,3 +37,5 @@ if __name__ == "__main__":
     else:
         Process(target=publishVideo, args=(config,)).start()
     Process(target=recognizeGloss, args=(config,)).start()
+    if(config['use_view']):
+        Process(target=subscribeViewer, args=(config,)).start()
