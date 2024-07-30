@@ -33,9 +33,10 @@ def publishVideo(config):
             video = np.float32(video[np.newaxis, :]) # (B,T,C,H,W)
             video /= 255
             send_sock.send(video.tobytes())
-            count =  config['num_frames'] // 2
-            del frames[: config['num_frames'] // 2]
+            count =  15
+            del frames[: config['num_frames'] - 15]
             if(config['verbose']): print(f"Send video with shape {video.shape} and type {video.dtype}")
+        time.sleep(0.03)
     send_sock.close()
     view_sock.close()
     ctx.term()

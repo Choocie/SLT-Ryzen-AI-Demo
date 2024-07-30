@@ -5,12 +5,14 @@ from  multiprocessing import Process
 
 from task.Camera import publishCamera
 from task.Recognition import recognizeGloss
+from task.Translate import publishTranslate
 from task.Video import publishVideo
 from task.Viewer import subscribeViewer
 
 
 config = {
-     'model_name' :         "resources/singlestream.onnx",
+     'model_name' :         "resources/singlestream_40.onnx",
+     'gloss_database_name' : "resources/glosses_en.txt",
      'driver_path':         'voe-4.0-win_amd64',
      'recognition_provider':'VitisAIExecutionProvider',
      'provider_config' :    '../voe-4.0-win_amd64/vaip_config.json',
@@ -22,13 +24,16 @@ config = {
      'video_width':          210,
      'video_height':         260,
      'video_path':           "resources/video/images",
-     'video_length':         181,
+     'video_length':         1800,
      'camera_port':          '1235',
      'view_port':            '1236',
-     'gloss_port':          '1237',
+     'gloss_prompt_port':    '1237',
+     'translate_port':       '1238',
+     'gloss_port':           '1239',
      'verbose':              False,
      'use_camera':           True,
-     'use_view':             True
+     'use_view':             True,
+     'use_translation':      False,
     }
 
 if __name__ == "__main__":

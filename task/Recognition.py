@@ -69,9 +69,7 @@ def ctc_beam_search_decoder(logits, sequence_lengths, beam_width=10, blank=0):
 
 
 def recognizeGloss(config):
-    
-    gloss_database_name = "resources/glosses.txt"
-    glosses = generateGlossDatabase(gloss_database_name)
+    glosses = generateGlossDatabase(config['gloss_database_name'])
     
     provider_options = [{
         'config_file': config['provider_config'],
@@ -86,13 +84,16 @@ def recognizeGloss(config):
     ctx = zmq.Context()
 
     rcv_sock = ctx.socket(zmq.SUB)
-    rcv_sock.setsockopt(zmq.CONFLATE, 1)
+    if(config['use_camera']): rcv_sock.setsockopt(zmq.CONFLATE, 1)
     rcv_sock.setsockopt(zmq.RCVTIMEO, 5000)
     rcv_sock.connect("tcp://127.0.0.1:" + config['camera_port'])
     rcv_sock.subscribe("")
     
     gloss_sock = ctx.socket(zmq.PUB)
     gloss_sock.bind("tcp://*:" + config['gloss_port'])
+    
+    gloss_prompt_sock = ctx.socket(zmq.PUB)
+    gloss_prompt_sock.bind("tcp://*:" + config['gloss_prompt_port'])    
     
     while True:
         try:
@@ -102,31 +103,30 @@ def recognizeGloss(config):
             sys.exit(0)
         video = np.frombuffer(serialized_video, dtype=np.float32).reshape(1,config['num_frames'],3, config['crop_height'], config['crop_width'])
         if(config['verbose']): print(f"Received Frame Buffer with dimensions {video.shape}")
-        #model_input = np.float32(video[np.newaxis, :])
-        #model_input /= 255
-        #model_input = np.flip(model_input,axis=2)
         
-        #if(config['verbose']): print(f"Start inference with {model_input.shape}")
         outputs = session.run(['onnx::LogSoftmax_729'], {
             'sgn_videos': video,
             'onnx::Mul_8': np.zeros((1),dtype=np.float32)})
         
         decoded_sequences = ctc_beam_search_decoder(outputs[0], np.array([10,]), beam_width=5, blank=0)
-        
-        #ids = np.argmax(outputs[0][:,:,:],axis=2).flatten()
-        #filtered_ids = [i for i in ids if i > 3]
-        #gloss = [glosses[i] for i in filtered_ids]
+
         gloss = [glosses[i] for i in decoded_sequences[0]]
         print(','.join(gloss))
+        
+        if(config['use_translation'] and len(gloss) > 1):
+            text = "(user) Can you give me a grammatically correct sentence using the following words. Region is a geographical location, can is a verb. Make it sound like a professional weather forecast:" + ','.join(gloss) + "."
+            gloss_prompt_sock.send(text.encode('ascii'))
 
-        if(config['use_view'] and len(gloss) > 0):
-            gloss_sock.send(','.join(gloss).encode('ascii'))
+        if(config['use_view'] and len(gloss) > 1):
+            text = ','.join(gloss)
+            gloss_sock.send(text.encode('ascii'))
      
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     rcv_sock.close()
     gloss_sock.close()
+    gloss_prompt_sock.close()
     ctx.term()
 
 if __name__ == "__main__":
