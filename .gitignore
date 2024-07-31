@@ -2,3 +2,8 @@ __pycache__
 modelcachekey_quick
 *.onnx
 *.png
+
+recognition/experiments/outputs/*
+recognition/experiments/pretrained_models/*
+recognition/data/*
+recognition/pretrained_models/*
