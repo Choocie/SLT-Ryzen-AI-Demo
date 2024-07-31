@@ -25,6 +25,7 @@ For a minimal setup, e.g. without translation model, you need the following step
 4. Install ZeroMQ and OpenCV using `pip install zmq opencv-python`.
 
 You are now all set loadup the demo by calling `python demo.py` in the root directory. Before starting up the demo, make sure that all driver paths are linked correctly in the configuration dictionary inside the `demo.py`.
+The onnx file can be acquired from [Google Drive](https://drive.google.com/drive/folders/1fnXKm4Mr86ABNouOZ8bQWiseYv0D_fmc?usp=sharing)/recognition/`singlestream_40.onnx`.
 
 ### Translation Setup
 
@@ -45,3 +46,7 @@ Currently, there are two operation modes supported. In both cases, start the app
 1. For testing, we support loading an image sequence. To use this mode, set `use_camera` to `False`.
 
 2. For demonstrating the system "on-air", set  `use_camera` to `True`. The application expects a connected USB Camera on your computer.
+
+
+### Generation of onnx File
+We refer to `recognition/README.md` for more details about how to acquire the onnx file.
