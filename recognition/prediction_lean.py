@@ -29,7 +29,7 @@ def evaluation(model, val_dataloader, cfg,
             batch = move_to_device(batch, cfg['device'])
             dummy_input = (False, batch['recognition_inputs'], batch)
             
-            # torch.onnx.export(model, dummy_input , "s2g_singlestream.onnx", verbose=True,opset_version=13)
+            torch.onnx.export(model, dummy_input , "s2g_singlestream.onnx", verbose=True,opset_version=13)
 
             forward_output = model(is_train=False, **batch)  
 
